@@ -19,6 +19,7 @@ from app.schemas.document import DocumentResponse
 from app.services.document_service import (
     DocumentService,
 )
+from app.services.storage import Storage, get_storage
 
 
 router = APIRouter(
@@ -29,11 +30,12 @@ router = APIRouter(
 
 def get_document_service(
     db: Session = Depends(get_db),
+    storage: Storage = Depends(get_storage),
 ):
 
     repository = DocumentRepository(db)
 
-    return DocumentService(repository)
+    return DocumentService(repository, storage)
 
 
 @router.post(

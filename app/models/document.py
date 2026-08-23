@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import (
     DateTime,
     ForeignKey,
+    Integer,
     String,
     Text,
 )
@@ -33,9 +34,19 @@ class Document(Base):
         nullable=False,
     )
 
-    file_path: Mapped[str] = mapped_column(
+    storage_key: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+    )
+
+    content_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    file_size: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
     )
 
     status: Mapped[str] = mapped_column(
