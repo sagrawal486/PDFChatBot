@@ -8,7 +8,9 @@ The client is injected to allow easy testing with mocked clients.
 """
 
 from typing import Any
+from uuid import uuid4
 
+import boto3
 from fastapi import UploadFile
 
 
@@ -20,16 +22,22 @@ class S3Storage:
     The client is injected, making it easy to test with mocks.
     """
 
-    def __init__(self, bucket: str, client: Any) -> None:
+    def __init__(
+        self,
+        bucket: str,
+        region: str = "us-east-1",
+        client: Any | None = None,
+    ) -> None:
         """
         Initialize S3Storage.
 
         Args:
             bucket: S3 bucket name (e.g., "my-app-pdfs")
+            region: AWS region used when creating the default client
             client: boto3 S3 client or mock client for testing
         """
         self.bucket = bucket
-        self.client = client
+        self.client = client or boto3.client("s3", region_name=region)
 
     async def put(self, file: UploadFile) -> str:
         """
@@ -48,12 +56,7 @@ class S3Storage:
         # In production with large files, use multipart upload.
         file_bytes = await file.read()
 
-        # For this lesson, the storage_key is just the original filename
-        # from the service. In production, the service would generate
-        # a key like "users/{user_id}/documents/{doc_id}/{token}.pdf"
-        # and pass it to storage.put().
-        # For now, UploadFile.filename serves as the key.
-        storage_key = file.filename
+        storage_key = f"{uuid4().hex}.pdf"
 
         # Call S3 to upload the object.
         # The Content-Type was validated by DocumentService.
@@ -77,3 +80,11 @@ class S3Storage:
             Bucket=self.bucket,
             Key=storage_key,
         )
+
+    async def get(self, storage_key: str) -> bytes:
+        """Download an S3 object and return its bytes for PDF processing."""
+        response = self.client.get_object(
+            Bucket=self.bucket,
+            Key=storage_key,
+        )
+        return response["Body"].read()

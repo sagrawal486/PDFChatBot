@@ -50,6 +50,12 @@ class MockS3Client:
             del self.objects[Key]
         return {"DeleteMarker": True}
 
+    def get_object(self, Bucket: str, Key: str) -> dict[str, Any]:
+        """Mock get_object call and return an in-memory response body."""
+        from io import BytesIO
+
+        return {"Body": BytesIO(self.objects[Key])}
+
 
 class FakeStorage:
     """
@@ -69,6 +75,10 @@ class FakeStorage:
 
     async def delete(self, storage_key: str) -> None:
         return None
+
+    async def get(self, storage_key: str) -> bytes:
+        """Return deterministic fake bytes for processing tests."""
+        return b"%PDF-fake"
 
 
 class FailingStorage(FakeStorage):

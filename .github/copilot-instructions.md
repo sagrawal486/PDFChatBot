@@ -44,6 +44,7 @@ API/Router -> Service -> Repository -> Database
 - Use dependency injection with `fastapi.Depends`.
 - Use Pydantic schemas for API contracts and validation.
 - Keep functions small, focused, and easy to test.
+- Add concise docstrings to public functions, methods, classes, and non-obvious test helpers; describe their purpose and important behavior.
 - Write tests for important business logic and behavior changes.
 - Prefer existing project patterns and avoid unnecessary dependencies.
 - Explain architectural changes before implementing them.
@@ -138,3 +139,94 @@ Additional rules:
 - Do not disable tests or linters to make a change pass.
 - Never commit secrets, credentials, tokens, or `.env` files.
 - Prefer existing project abstractions over introducing duplicate patterns.
+
+## Delivery Workflow
+
+- This is a learning project with a five-day MVP target: a user authenticates, uploads a PDF, the PDF is processed asynchronously, and the user asks questions answered from that document.
+- Prefer official online references and links over long explanations in chat. Keep explanations concise and include the relevant documentation link when a concept needs further study.
+- Do not run terminal commands, install packages, or create AWS resources unless the user explicitly asks. Provide the exact command and ask the user to return its output.
+- Work in small phases. After each edit, provide focused verification commands; use the returned output to decide the next change.
+- Do not claim tests or checks passed without fresh user-provided command output.
+- Keep normal tests independent of AWS credentials, the internet, paid services, and real buckets.
+
+## SOLID and Loose Coupling
+
+- Apply SOLID pragmatically, without speculative abstractions.
+- Keep each class or function focused on one responsibility.
+- Depend on protocols or small interfaces at boundaries such as storage, repositories, queues, embedding providers, and chat providers.
+- Inject dependencies through constructors or FastAPI dependency functions so implementations can be replaced by fakes in tests.
+- Keep routers responsible for HTTP concerns, services responsible for use cases, repositories responsible for persistence, and adapters responsible for external systems.
+- Keep AWS, OpenAI, Redis, Celery, and PDF-library details out of domain rules and API response logic.
+- Prefer small composition-based services over inheritance hierarchies, global clients, service locators, or complex factories.
+- Add an abstraction only when it removes coupling or makes a real behavior independently testable.
+- Preserve stable public interfaces and add focused tests before changing shared contracts.
+
+## Five-Day MVP Plan
+
+### Day 1: Foundation, Authentication, and Storage
+
+- Finish settings and environment validation.
+- Support `STORAGE_BACKEND=local|s3` with private S3 as the preferred development/runtime backend and LocalStorage as the fallback.
+- Complete registration, password hashing, login, JWT validation, and current-user dependencies.
+- Finish secure PDF upload validation and document metadata persistence.
+- Keep S3 private and explicitly configured; use boto3's default credential provider chain.
+
+### Day 2: Background PDF Processing
+
+- Add a small processing service behind an explicit interface.
+- Extract text from uploaded PDFs, normalize it, and split it into bounded chunks.
+- Add document processing states such as `uploaded`, `processing`, `ready`, and `failed`.
+- Use Celery with Redis for background work, while keeping a synchronous local path available for easier learning and testing.
+- Test extraction, chunking, state transitions, and failure handling without real AWS or OpenAI calls.
+
+### Day 3: Embeddings and Vector Search
+
+- Add the minimum database support for chunk records and embeddings using PostgreSQL with pgvector where available.
+- Isolate the embedding provider behind an interface; provide a fake provider for tests.
+- Generate embeddings for document chunks and implement user-scoped similarity search.
+- Add indexes and bounded result limits only after the basic flow works.
+- Keep embedding dimensions and provider names configuration-driven.
+
+### Day 4: RAG Question Answering and Client Flow
+
+- Add a chat service that retrieves relevant user-owned chunks and builds a bounded context prompt.
+- Isolate the LLM provider behind an interface with a fake provider for tests.
+- Add the question endpoint first; add WebSocket streaming only if the core request/response flow is stable.
+- Return citations such as document name and chunk reference where practical.
+- Add a minimal usable client or documented API workflow for upload, processing status, and asking questions.
+
+### Day 5: Verification and Low-Cost Deployment
+
+- Run the complete test, compile, migration, and diff checks.
+- Add Docker deployment configuration and environment documentation.
+- Deploy the backend to a low-cost or free-tier EC2 development instance only after local verification.
+- Use a private S3 development bucket with Block Public Access, a lifecycle rule for temporary objects, and least-privilege IAM.
+- Run the API, Celery worker, Redis, and PostgreSQL together on one low-cost EC2 development instance with Docker Compose for the AWS learning deployment.
+- Use S3 for PDF objects. Do not add RDS or ElastiCache for the first MVP; separate managed services increase cost and are not required to demonstrate the architecture.
+- Use Amazon Bedrock for embeddings and chat when the AWS-only path is required; keep provider interfaces so a fake provider can be used in tests.
+- Add shutdown, cleanup, and cost-monitoring instructions. Do not create AWS resources automatically.
+
+## Low-Cost AWS Rules
+
+- Use a private development S3 bucket as the preferred runtime storage; keep LocalStorage available for offline fallback and isolated development.
+- Make the S3 backend explicit through configuration; normal tests still use injected fakes and never contact AWS.
+- Use one EC2 instance with Docker Compose for PostgreSQL, Redis, the API, and workers to minimize the number of paid AWS services.
+- Do not use RDS, ElastiCache, NAT gateways, load balancers, CloudFront, or multi-region services for the first MVP unless explicitly required.
+- Use one dedicated private development bucket and delete unused objects regularly.
+- Use IAM roles on EC2; never put access keys in source code or committed settings.
+- Set AWS budgets and billing alerts before using paid resources.
+- Stop or terminate EC2 resources when not in use and verify the S3, EBS, public IPv4, and data-transfer costs.
+- Keep model calls, embedding calls, file sizes, retrieved chunks, and response tokens bounded.
+
+## User-Run Verification Commands
+
+The assistant should provide commands but not run them unless explicitly requested. The user should run commands from the repository root and return the complete output:
+
+```powershell
+pytest -q
+python -m compileall -q app tests
+git diff --check
+git status --short
+```
+
+For a focused change, provide the narrowest applicable pytest command first. Never require AWS credentials for the ordinary test suite. Real-AWS smoke tests must be explicit, isolated to a development bucket, and clearly labeled as potentially billable.

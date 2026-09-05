@@ -1,4 +1,5 @@
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -13,8 +14,8 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
 
-    AWS_ACCESS_KEY: str = ""
-    AWS_SECRET_KEY: str = ""
+    STORAGE_BACKEND: str = "local"
+    S3_BUCKET: str = ""
     AWS_REGION: str = "ap-south-1"
 
     REDIS_HOST: str = "localhost"
@@ -26,10 +27,7 @@ class Settings(BaseSettings):
 
     MAX_UPLOAD_SIZE_MB: int = 10
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def database_url(self) -> str:
