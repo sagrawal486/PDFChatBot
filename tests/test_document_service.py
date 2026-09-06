@@ -6,7 +6,12 @@ from fastapi import HTTPException, UploadFile
 
 from app.core.settings import settings
 from app.services.document_service import DocumentService
-from tests.fakes import FakeRepository, FakeStorage, FailingStorage
+from tests.fakes import (
+    FakeDispatcher,
+    FakeRepository,
+    FakeStorage,
+    FailingStorage,
+)
 
 
 def make_upload(
@@ -117,3 +122,19 @@ def test_upload_does_not_persist_when_storage_fails() -> None:
         asyncio.run(service.upload(make_upload(), user_id=7))
 
     assert repository.created == []
+
+
+def test_upload_dispatches_processing_after_persistence() -> None:
+    """Verify processing is queued only after the document is stored."""
+    repository = FakeRepository()
+    dispatcher = FakeDispatcher()
+    service = DocumentService(
+        repository,
+        FakeStorage(),
+        dispatcher,
+    )
+
+    document = asyncio.run(service.upload(make_upload(), user_id=7))
+
+    assert repository.created == [document]
+    assert dispatcher.document_ids == [document.id]

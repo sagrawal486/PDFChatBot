@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
@@ -38,6 +39,11 @@ class Settings(BaseSettings):
             f"{self.DB_PORT}/"
             f"{self.DB_NAME}"
         )
+
+    @property
+    def redis_url(self) -> str:
+        """Return the Redis URL used by Celery."""
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
 
 @lru_cache

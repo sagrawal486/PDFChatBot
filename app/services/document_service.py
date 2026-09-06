@@ -5,6 +5,7 @@ from app.models.document import Document
 from app.repositories.document_repository import (
     DocumentRepository,
 )
+from app.services.document_dispatcher import DocumentDispatcher
 from app.services.storage import Storage
 
 
@@ -17,9 +18,11 @@ class DocumentService:
         self,
         repository: DocumentRepository,
         storage: Storage,
+        dispatcher: DocumentDispatcher | None = None,
     ):
         self.repository = repository
         self.storage = storage
+        self.dispatcher = dispatcher
 
     async def upload(self,file: UploadFile,user_id: int,    ):
 
@@ -42,9 +45,11 @@ class DocumentService:
             status="uploaded",
         )
 
-        return self.repository.create(
-            document
-        )
+        created_document = self.repository.create(document)
+        if self.dispatcher is not None:
+            self.dispatcher.enqueue(created_document.id)
+
+        return created_document
 
     async def _validate_file(self, file: UploadFile) -> int:
         maximum_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024

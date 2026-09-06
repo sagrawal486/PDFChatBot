@@ -19,6 +19,7 @@ from app.schemas.document import DocumentResponse
 from app.services.document_service import (
     DocumentService,
 )
+from app.services.document_dispatcher import CeleryDocumentDispatcher
 from app.services.storage import Storage, get_storage
 
 
@@ -35,7 +36,11 @@ def get_document_service(
 
     repository = DocumentRepository(db)
 
-    return DocumentService(repository, storage)
+    return DocumentService(
+        repository,
+        storage,
+        CeleryDocumentDispatcher(),
+    )
 
 
 @router.post(

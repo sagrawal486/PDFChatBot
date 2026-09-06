@@ -81,6 +81,17 @@ class FakeStorage:
         return b"%PDF-fake"
 
 
+class FakeDispatcher:
+    """Fake processing dispatcher recording queued document IDs."""
+
+    def __init__(self) -> None:
+        self.document_ids: list[int] = []
+
+    def enqueue(self, document_id: int) -> None:
+        """Record a processing request without contacting Redis."""
+        self.document_ids.append(document_id)
+
+
 class FailingStorage(FakeStorage):
     """
     Storage that always fails to simulate error handling.
