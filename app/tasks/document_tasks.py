@@ -5,9 +5,11 @@ from collections.abc import Callable
 
 from sqlalchemy.orm import Session
 
+from app.core.settings import settings
 from app.db.database import SessionLocal
 from app.repositories.document_repository import DocumentRepository
 from app.services.document_processing_service import DocumentProcessingService
+from app.services.embeddings import BedrockEmbeddingProvider
 from app.services.pdf_processing import (
     PdfDocumentProcessor,
     PdfTextExtractor,
@@ -26,6 +28,10 @@ def build_document_processing_service() -> tuple[DocumentProcessingService, Sess
         processor=PdfDocumentProcessor(
             extractor=PdfTextExtractor(),
             chunker=TextChunker(),
+        ),
+        embedding_provider=BedrockEmbeddingProvider(
+            model_id=settings.EMBEDDING_MODEL_ID,
+            region=settings.AWS_REGION,
         ),
     )
     return service, db

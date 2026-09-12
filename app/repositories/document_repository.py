@@ -35,4 +35,31 @@ class DocumentRepository(
         self.db.add_all(new_chunks)
         self.db.commit()
         return new_chunks
+
+    def replace_chunks_with_embeddings(
+        self,
+        document_id: int,
+        chunks: list[tuple[str, list[float]]],
+    ) -> list[DocumentChunk]:
+        """Replace chunks and persist each embedding as JSON text."""
+        existing_chunks = self.db.query(DocumentChunk).filter(
+            DocumentChunk.document_id == document_id
+        ).all()
+        for chunk in existing_chunks:
+            self.db.delete(chunk)
+
+        import json
+
+        new_chunks = [
+            DocumentChunk(
+                document_id=document_id,
+                chunk_index=index,
+                content=content,
+                embedding=json.dumps(embedding),
+            )
+            for index, (content, embedding) in enumerate(chunks)
+        ]
+        self.db.add_all(new_chunks)
+        self.db.commit()
+        return new_chunks
     

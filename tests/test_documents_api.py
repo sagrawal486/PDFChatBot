@@ -19,7 +19,10 @@ class FakeService:
         return {"id": 1, "file_name": file.filename, "status": "uploaded"}
 
 
-def test_get_storage_returns_local_storage() -> None:
+def test_get_storage_returns_local_storage(monkeypatch) -> None:
+    """Verify the API can use LocalStorage when the local backend is selected."""
+    monkeypatch.setattr("app.services.storage.settings.STORAGE_BACKEND", "local")
+
     storage = get_storage()
 
     assert isinstance(storage, LocalStorage)

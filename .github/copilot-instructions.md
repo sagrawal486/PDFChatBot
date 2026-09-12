@@ -182,7 +182,7 @@ Additional rules:
 ### Day 3: Embeddings and Vector Search
 
 - Add the minimum database support for chunk records and embeddings using PostgreSQL with pgvector where available.
-- Isolate the embedding provider behind an interface; provide a fake provider for tests.
+- Isolate the embedding provider behind an interface; use Amazon Bedrock for the AWS runtime path and provide a fake provider for tests.
 - Generate embeddings for document chunks and implement user-scoped similarity search.
 - Add indexes and bounded result limits only after the basic flow works.
 - Keep embedding dimensions and provider names configuration-driven.

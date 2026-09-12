@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
 
     OPENAI_API_KEY: str = ""
+    EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
     STORAGE_BACKEND: str = "local"
     S3_BUCKET: str = ""
