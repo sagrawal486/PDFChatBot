@@ -1,3 +1,5 @@
+import json
+
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
 from app.repositories.base import BaseRepository
@@ -62,4 +64,20 @@ class DocumentRepository(
         self.db.add_all(new_chunks)
         self.db.commit()
         return new_chunks
+
+    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float]]]:
+        """Return embedded chunks belonging only to the requested user."""
+        rows = self.db.query(DocumentChunk).join(
+            Document,
+            Document.id == DocumentChunk.document_id,
+        ).filter(
+            Document.user_id == user_id,
+            DocumentChunk.embedding.is_not(None),
+        ).all()
+
+        return [
+            (row.content, json.loads(row.embedding))
+            for row in rows
+            if row.embedding is not None
+        ]
     
