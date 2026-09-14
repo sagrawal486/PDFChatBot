@@ -65,8 +65,11 @@ class DocumentRepository(
         self.db.commit()
         return new_chunks
 
-    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float]]]:
-        """Return embedded chunks belonging only to the requested user."""
+    def get_chunks_for_user(
+        self,
+        user_id: int,
+    ) -> list[tuple[str, list[float], int, int]]:
+        """Return embedded chunks and citation metadata for one user."""
         rows = self.db.query(DocumentChunk).join(
             Document,
             Document.id == DocumentChunk.document_id,
@@ -76,7 +79,12 @@ class DocumentRepository(
         ).all()
 
         return [
-            (row.content, json.loads(row.embedding))
+            (
+                row.content,
+                json.loads(row.embedding),
+                row.document_id,
+                row.chunk_index,
+            )
             for row in rows
             if row.embedding is not None
         ]

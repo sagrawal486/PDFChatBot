@@ -8,8 +8,11 @@ from app.services.embeddings import ChunkMatch, EmbeddingProvider, _cosine_simil
 class ChunkRepository(Protocol):
     """Persistence boundary required by the retrieval service."""
 
-    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float]]]:
-        """Return embedded chunks for one user."""
+    def get_chunks_for_user(
+        self,
+        user_id: int,
+    ) -> list[tuple[str, list[float], int, int]]:
+        """Return embedded chunks and citation metadata for one user."""
 
 
 class UserChunkRetriever:
@@ -31,8 +34,13 @@ class UserChunkRetriever:
 
         query_embedding = self.embedding_provider.embed(query)
         matches = [
-            ChunkMatch(content, _cosine_similarity(query_embedding, embedding))
-            for content, embedding in self.repository.get_chunks_for_user(user_id)
+            ChunkMatch(
+                content,
+                _cosine_similarity(query_embedding, embedding),
+                document_id=document_id,
+                chunk_index=chunk_index,
+            )
+            for content, embedding, document_id, chunk_index in self.repository.get_chunks_for_user(user_id)
         ]
         matches.sort(key=lambda match: match.score, reverse=True)
         return matches[:limit]

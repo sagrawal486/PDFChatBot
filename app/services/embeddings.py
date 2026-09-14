@@ -45,9 +45,18 @@ class BedrockEmbeddingProvider:
 class ChunkMatch:
     """A retrieved chunk and its similarity score."""
 
-    def __init__(self, content: str, score: float) -> None:
+    def __init__(
+        self,
+        content: str,
+        score: float,
+        document_id: int | None = None,
+        chunk_index: int | None = None,
+    ) -> None:
+        """Create a match with optional document citation metadata."""
         self.content = content
         self.score = score
+        self.document_id = document_id
+        self.chunk_index = chunk_index
 
 
 class InMemoryChunkRetriever:

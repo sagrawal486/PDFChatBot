@@ -11,12 +11,12 @@ class FakeChunkRepository:
     def __init__(self) -> None:
         self.user_ids: list[int] = []
 
-    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float]]]:
+    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float], int, int]]:
         """Record the owner filter and return deterministic chunks."""
         self.user_ids.append(user_id)
         return [
-            ("database chunk", [1.0, 0.0]),
-            ("network chunk", [0.0, 1.0]),
+            ("database chunk", [1.0, 0.0], 1, 0),
+            ("network chunk", [0.0, 1.0], 1, 1),
         ]
 
 
