@@ -9,6 +9,16 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    env:
+      # No .env file exists in CI (it's gitignored and never committed), but Settings has
+      # required fields with no defaults, so importing app.core.settings fails without
+      # them -- even though no test here touches a real database. Dummy/test-only values,
+      # never real credentials.
+      DB_HOST: localhost
+      DB_NAME: test
+      DB_USER: test
+      DB_PASSWORD: test
+      JWT_SECRET_KEY: ci-test-secret-not-for-real-use
     steps:
       - uses: actions/checkout@v4
 
