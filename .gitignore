@@ -1,8 +1,10 @@
+venv/
 .venv/
 __pycache__/
 *.pyc
 .env
 .pytest_cache/
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
 uploads/
