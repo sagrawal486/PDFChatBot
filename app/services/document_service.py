@@ -51,6 +51,23 @@ class DocumentService:
 
         return created_document
 
+    def list_documents(self, user_id: int) -> list[Document]:
+        """Return the user's documents, newest first."""
+        return self.repository.list_for_user(user_id)
+
+    def get_document(self, document_id: int, user_id: int) -> Document:
+        """Return one owned document or raise 404 (also for other users' documents)."""
+        document = self.repository.get_for_user(document_id, user_id)
+        if document is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return document
+
+    async def delete_document(self, document_id: int, user_id: int) -> None:
+        """Delete an owned document, its stored file and (via cascade) its chunks."""
+        document = self.get_document(document_id, user_id)
+        await self.storage.delete(document.storage_key)
+        self.repository.delete(document)
+
     async def _validate_file(self, file: UploadFile) -> int:
         maximum_size = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
         file_size = 0

@@ -9,9 +9,9 @@ from app.services.retrieval import UserChunkRetriever
 class FakeRepository:
     """Fake user-scoped chunk repository."""
 
-    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float], int, int]]:
+    def search_similar_chunks(self, user_id: int, query_embedding: list[float], limit: int):
         """Return deterministic chunks with citation metadata."""
-        return [("The answer is forty-two.", [1.0, 0.0], 8, 2)]
+        return [("The answer is forty-two.", 1.0, 8, 2, 5)]
 
 
 class FakeEmbeddingProvider:
@@ -49,6 +49,7 @@ def test_rag_service_answers_with_retrieved_context_and_citation() -> None:
     assert result.answer == "The answer is forty-two."
     assert result.citations[0].document_id == 8
     assert result.citations[0].chunk_index == 2
+    assert result.citations[0].page_number == 5
     assert chat_provider.questions == ["What is the answer?"]
     assert chat_provider.contexts == ["The answer is forty-two."]
 

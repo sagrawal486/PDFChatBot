@@ -2,6 +2,7 @@
 
 import json
 import math
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Protocol
 
 import boto3
@@ -22,6 +23,7 @@ class BedrockEmbeddingProvider:
         model_id: str,
         region: str,
         client: Any | None = None,
+        max_concurrency: int = 5,
     ) -> None:
         """Configure Bedrock with an injectable client for deterministic tests."""
         self.model_id = model_id
@@ -29,6 +31,7 @@ class BedrockEmbeddingProvider:
             "bedrock-runtime",
             region_name=region,
         )
+        self.max_concurrency = max(1, max_concurrency)
 
     def embed(self, text: str) -> list[float]:
         """Invoke the configured Bedrock embedding model for one text value."""
@@ -41,6 +44,17 @@ class BedrockEmbeddingProvider:
         payload = json.loads(response["body"].read())
         return payload["embedding"]
 
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embed multiple texts concurrently, preserving input order.
+
+        Titan's invoke_model only accepts one text per call, so "batching" here
+        means bounded parallel calls rather than one request for many texts.
+        """
+        if not texts:
+            return []
+        with ThreadPoolExecutor(max_workers=min(self.max_concurrency, len(texts))) as executor:
+            return list(executor.map(self.embed, texts))
+
 
 class ChunkMatch:
     """A retrieved chunk and its similarity score."""
@@ -51,12 +65,14 @@ class ChunkMatch:
         score: float,
         document_id: int | None = None,
         chunk_index: int | None = None,
+        page_number: int | None = None,
     ) -> None:
         """Create a match with optional document citation metadata."""
         self.content = content
         self.score = score
         self.document_id = document_id
         self.chunk_index = chunk_index
+        self.page_number = page_number
 
 
 class InMemoryChunkRetriever:
@@ -80,14 +96,14 @@ class InMemoryChunkRetriever:
 
         query_embedding = self.embedding_provider.embed(query)
         ranked = [
-            ChunkMatch(content, _cosine_similarity(query_embedding, embedding))
+            ChunkMatch(content, cosine_similarity(query_embedding, embedding))
             for content, embedding in self._chunks
         ]
         ranked.sort(key=lambda match: match.score, reverse=True)
         return ranked[:limit]
 
 
-def _cosine_similarity(first: list[float], second: list[float]) -> float:
+def cosine_similarity(first: list[float], second: list[float]) -> float:
     """Return cosine similarity, rejecting vectors with incompatible sizes."""
     if len(first) != len(second):
         raise ValueError("embedding dimensions must match")

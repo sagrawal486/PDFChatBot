@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    env:
+      # No .env file exists in CI (it's gitignored and never committed), but Settings has
+      # required fields with no defaults, so importing app.core.settings fails without
+      # them -- even though no test here touches a real database. Dummy/test-only values,
+      # never real credentials.
+      DB_HOST: localhost
+      DB_NAME: test
+      DB_USER: test
+      DB_PASSWORD: test
+      JWT_SECRET_KEY: ci-test-secret-not-for-real-use
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Compile check
+        run: python -m compileall -q app tests migrations
+
+  docker-build:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API/worker image
+        run: docker build -f docker/Dockerfile -t aipdf-chatbot:ci .
