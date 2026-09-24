@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASSWORD: str
 
-    OPENAI_API_KEY: str = ""
+    CHAT_PROVIDER: str = "simple"  # "simple" (free, returns context) or "bedrock"
+    CHAT_MODEL_ID: str = "apac.amazon.nova-micro-v1:0"
+    CHAT_MAX_TOKENS: int = 512
+    CORS_ORIGINS: str = "http://localhost:3000"
     EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 
     STORAGE_BACKEND: str = "local"
@@ -28,6 +31,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     MAX_UPLOAD_SIZE_MB: int = 10
+    PGVECTOR_DIMENSION: int = 1024
+    PGVECTOR_ENABLED: bool = True
+
+    # Cost/abuse bounds: cap chunks embedded per document and questions answered per user.
+    MAX_CHUNKS_PER_DOCUMENT: int = 500
+    EMBEDDING_CONCURRENCY: int = 5
+    MAX_QUESTIONS_PER_DAY: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -40,6 +50,11 @@ class Settings(BaseSettings):
             f"{self.DB_PORT}/"
             f"{self.DB_NAME}"
         )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Return configured CORS origins as a list."""
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def redis_url(self) -> str:

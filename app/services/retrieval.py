@@ -2,17 +2,20 @@
 
 from typing import Protocol
 
-from app.services.embeddings import ChunkMatch, EmbeddingProvider, _cosine_similarity
+from app.services.embeddings import ChunkMatch, EmbeddingProvider
 
 
 class ChunkRepository(Protocol):
     """Persistence boundary required by the retrieval service."""
 
-    def get_chunks_for_user(
+    def search_similar_chunks(
         self,
         user_id: int,
-    ) -> list[tuple[str, list[float], int, int]]:
-        """Return embedded chunks and citation metadata for one user."""
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[tuple[str, float, int, int, int | None]]:
+        """Return (content, score, document_id, chunk_index, page_number) for the closest
+        user-owned chunks."""
 
 
 class UserChunkRetriever:
@@ -33,14 +36,14 @@ class UserChunkRetriever:
             raise ValueError("limit must be greater than zero")
 
         query_embedding = self.embedding_provider.embed(query)
-        matches = [
+        rows = self.repository.search_similar_chunks(user_id, query_embedding, limit)
+        return [
             ChunkMatch(
                 content,
-                _cosine_similarity(query_embedding, embedding),
+                score,
                 document_id=document_id,
                 chunk_index=chunk_index,
+                page_number=page_number,
             )
-            for content, embedding, document_id, chunk_index in self.repository.get_chunks_for_user(user_id)
+            for content, score, document_id, chunk_index, page_number in rows
         ]
-        matches.sort(key=lambda match: match.score, reverse=True)
-        return matches[:limit]

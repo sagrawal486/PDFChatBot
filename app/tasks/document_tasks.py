@@ -32,7 +32,9 @@ def build_document_processing_service() -> tuple[DocumentProcessingService, Sess
         embedding_provider=BedrockEmbeddingProvider(
             model_id=settings.EMBEDDING_MODEL_ID,
             region=settings.AWS_REGION,
+            max_concurrency=settings.EMBEDDING_CONCURRENCY,
         ),
+        max_chunks=settings.MAX_CHUNKS_PER_DOCUMENT,
     )
     return service, db
 
@@ -48,7 +50,7 @@ def run_document_processing(
     try:
         asyncio.run(service.process(document_id))
     finally:
-        db.close()
+        db.close()  
 
 
 @celery_app.task(

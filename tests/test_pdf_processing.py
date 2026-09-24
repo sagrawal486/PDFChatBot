@@ -1,10 +1,11 @@
-"""Tests for PDF extraction, normalization, and text chunking."""
+"""Tests for PDF extraction, normalization, and page-aware text chunking."""
 
 import asyncio
 
 import pytest
 
 from app.services.pdf_processing import (
+    PageChunk,
     PdfDocumentProcessor,
     PdfTextExtractor,
     StoredDocumentProcessor,
@@ -34,9 +35,12 @@ class FakeReader:
 class FakeExtractor:
     """Fake extractor for testing processor composition."""
 
-    def extract(self, file_bytes: bytes) -> str:
-        """Return deterministic text without parsing a real PDF."""
-        return "alpha beta gamma delta"
+    def __init__(self, pages: list[str] | None = None) -> None:
+        self.pages = pages if pages is not None else ["alpha beta", "gamma delta"]
+
+    def extract(self, file_bytes: bytes) -> list[str]:
+        """Return deterministic per-page text without parsing a real PDF."""
+        return self.pages
 
 
 class FakeStorage:
@@ -52,13 +56,13 @@ class FakeStorage:
         return self.content
 
 
-def test_pdf_text_extractor_normalizes_text() -> None:
-    """Verify that page text is combined and whitespace is normalized."""
+def test_pdf_text_extractor_normalizes_text_per_page() -> None:
+    """Verify each page's text is normalized independently and page order is kept."""
     extractor = PdfTextExtractor(reader_factory=FakeReader)
 
-    text = extractor.extract(b"fake-pdf")
+    pages = extractor.extract(b"fake-pdf")
 
-    assert text == "First page. Second page."
+    assert pages == ["First page.", "", "Second page."]
 
 
 def test_text_chunker_returns_bounded_overlapping_chunks() -> None:
@@ -85,16 +89,42 @@ def test_text_chunker_rejects_invalid_configuration() -> None:
         TextChunker(chunk_size=10, overlap=10)
 
 
+def test_text_chunker_split_pages_keeps_each_chunks_source_page() -> None:
+    """Verify chunks across multiple pages each carry their own 1-indexed page number."""
+    chunker = TextChunker(chunk_size=10, overlap=0)
+
+    chunks = chunker.split_pages(["alpha beta", "gamma delta"])
+
+    assert chunks == [
+        PageChunk(1, "alpha beta"),
+        PageChunk(2, "gamma delt"),
+        PageChunk(2, "a"),
+    ]
+
+
+def test_text_chunker_split_pages_skips_blank_pages() -> None:
+    """Verify a page with no extractable text contributes no chunks."""
+    chunker = TextChunker(chunk_size=10, overlap=0)
+
+    chunks = chunker.split_pages(["alpha", "", "beta"])
+
+    assert chunks == [PageChunk(1, "alpha"), PageChunk(3, "beta")]
+
+
 def test_pdf_document_processor_composes_extractor_and_chunker() -> None:
-    """Verify the processor coordinates injected extraction and chunking."""
+    """Verify the processor coordinates injected extraction and page-aware chunking."""
     processor = PdfDocumentProcessor(
-        extractor=FakeExtractor(),
+        extractor=FakeExtractor(pages=["alpha beta", "gamma delta"]),
         chunker=TextChunker(chunk_size=10, overlap=0),
     )
 
     chunks = processor.process(b"fake-pdf")
 
-    assert chunks == ["alpha beta", " gamma del", "ta"]
+    assert chunks == [
+        PageChunk(1, "alpha beta"),
+        PageChunk(2, "gamma delt"),
+        PageChunk(2, "a"),
+    ]
 
 
 def test_stored_document_processor_loads_then_processes_document() -> None:
@@ -103,7 +133,7 @@ def test_stored_document_processor_loads_then_processes_document() -> None:
     processor = StoredDocumentProcessor(
         storage=storage,
         processor=PdfDocumentProcessor(
-            extractor=FakeExtractor(),
+            extractor=FakeExtractor(pages=["alpha beta", "gamma delta"]),
             chunker=TextChunker(chunk_size=10, overlap=0),
         ),
     )
@@ -111,4 +141,8 @@ def test_stored_document_processor_loads_then_processes_document() -> None:
     chunks = asyncio.run(processor.process("document-key"))
 
     assert storage.requested_keys == ["document-key"]
-    assert chunks == ["alpha beta", " gamma del", "ta"]
+    assert chunks == [
+        PageChunk(1, "alpha beta"),
+        PageChunk(2, "gamma delt"),
+        PageChunk(2, "a"),
+    ]

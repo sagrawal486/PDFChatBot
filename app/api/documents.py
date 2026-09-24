@@ -1,5 +1,6 @@
 from fastapi import (
     APIRouter,
+    Response,
     Depends,
     File,
     UploadFile,
@@ -62,3 +63,30 @@ async def upload_document(
         file,
         current_user.id,
     )
+
+
+@router.get("", response_model=list[DocumentResponse])
+async def list_documents(
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    return service.list_documents(current_user.id)
+
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    return service.get_document(document_id, current_user.id)
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    await service.delete_document(document_id, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

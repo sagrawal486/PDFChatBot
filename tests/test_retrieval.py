@@ -11,13 +11,13 @@ class FakeChunkRepository:
     def __init__(self) -> None:
         self.user_ids: list[int] = []
 
-    def get_chunks_for_user(self, user_id: int) -> list[tuple[str, list[float], int, int]]:
-        """Record the owner filter and return deterministic chunks."""
+    def search_similar_chunks(self, user_id: int, query_embedding: list[float], limit: int):
+        """Record the owner filter and return deterministic ranked chunks."""
         self.user_ids.append(user_id)
         return [
-            ("database chunk", [1.0, 0.0], 1, 0),
-            ("network chunk", [0.0, 1.0], 1, 1),
-        ]
+            ("database chunk", 1.0, 1, 0, 3),
+            ("network chunk", 0.0, 1, 1, 4),
+        ][:limit]
 
 
 class FakeEmbeddingProvider:
@@ -38,6 +38,7 @@ def test_user_chunk_retriever_filters_by_user_and_ranks_results() -> None:
     assert repository.user_ids == [7]
     assert matches[0].content == "database chunk"
     assert matches[0].score == pytest.approx(1.0)
+    assert matches[0].page_number == 3
 
 
 def test_user_chunk_retriever_rejects_invalid_limit() -> None:

@@ -22,3 +22,22 @@ def test_document_migration_adds_storage_metadata_columns() -> None:
     assert 'sa.Column("storage_key", sa.Text(), nullable=True)' in migration_text
     assert 'sa.Column("content_type", sa.String(length=100), nullable=True)' in migration_text
     assert 'sa.Column("file_size", sa.Integer(), nullable=True)' in migration_text
+
+
+def test_migrations_enable_pgvector_support() -> None:
+    migration_text = "\n".join(
+        path.read_text()
+        for path in Path("migrations/versions").glob("*.py")
+    )
+
+    assert "CREATE EXTENSION IF NOT EXISTS vector" in migration_text
+    assert "pgvector" in migration_text
+
+
+def test_migrations_add_page_number_to_document_chunks() -> None:
+    migration_text = "\n".join(
+        path.read_text()
+        for path in Path("migrations/versions").glob("*.py")
+    )
+
+    assert 'sa.Column("page_number", sa.Integer(), nullable=True)' in migration_text
